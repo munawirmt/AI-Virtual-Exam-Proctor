@@ -6,30 +6,14 @@ import os
 # പേജിന്റെ ലേഔട്ട് സെറ്റ് ചെയ്യുന്നു
 st.set_page_config(page_title="AI Exam Proctor", layout="wide")
 
-# കോഡിനുള്ളിൽ നേരിട്ട് XML ഫയലുകൾ ഉണ്ടാക്കാനുള്ള ട്രിക്ക്
-@st.cache_resource
-def setup_xml_files():
-    # 1. ഫേസ് ഡിറ്റക്ഷൻ ഡാറ്റ (ക്ലൗഡിൽ തനിയെ ഫയൽ ഉണ്ടാക്കും)
-    if not os.path.exists("face.xml"):
-        # വിപണിയിൽ ലഭ്യമായ ഏറ്റവും വേഗതയേറിയ കോൺഫിഗറേഷൻ ബിൽറ്റ്-ഇൻ ഡാറ്റ
-        with open("face.xml", "w") as f:
-            f.write('<?xml version="1.0"?><opencv_storage><haarcascade_frontalface_default type_id="opencv-haar-classifier">')
-            # ബാക്കി പ്രധാന കോൺഫിഗറേഷനുകൾ റൺ ടൈമിൽ ലോഡ് ചെയ്യാൻ ഒഫീഷ്യൽ സിസ്റ്റം പാത്ത് ഉപയോഗിക്കാം
-            
-    # സെർവറിലെ തകരാറുകൾ പൂർണ്ണമായി ഒഴിവാക്കാൻ OpenCV-യുടെ ഇൻ-ബിൽറ്റ് ഡാറ്റ ലോഡ് ചെയ്യുന്നു
-    try:
-        face = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        eye = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-        # ചില സെർവറുകളിൽ പാത്ത് മാറിയാൽ ഉള്ള ബാക്കപ്പ്
-        if face.empty():
-            face = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_alt.xml')
-        return face, eye
-    except:
-        # ലോക്കൽ ഡൗൺലോഡ് ബാക്കപ്പ്
-        return cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'), cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+# കറന്റ് ഫോൾഡറിലെ XML ഫയലുകളുടെ കൃത്യമായ പാത്ത് കണ്ടുപിടിക്കുന്നു
+current_dir = os.path.dirname(os.path.abspath(__file__))
+face_path = os.path.join(current_dir, 'haarcascade_frontalface_default.xml')
+eye_path = os.path.join(current_dir, 'haarcascade_eye.xml')
 
-# മോഡലുകൾ ലോഡ് ചെയ്യുന്നു
-face_cascade, eye_cascade = setup_xml_files()
+# ഗിറ്റ്‌ഹബ്ബിൽ അപ്‌ലോഡ് ചെയ്ത ഫയലുകൾ നേരിട്ട് ലോഡ് ചെയ്യുന്നു
+face_cascade = cv2.CascadeClassifier(face_path)
+eye_cascade = cv2.CascadeClassifier(eye_path)
 
 st.title("🎓 Smart AI Virtual Exam Proctoring System")
 st.write("---")
@@ -55,8 +39,10 @@ with col2:
         cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
         
-        # എറർ വരാതിരിക്കാൻ ഡിറ്റക്ഷൻ സിസ്റ്റം സുരക്ഷിതമായി റൺ ചെയ്യുന്നു
-        if not face_cascade.empty():
+        # ഫയലുകൾ ശരിയായി ലോഡ് ആയിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുന്നു
+        if face_cascade.empty() or face_cascade is None:
+            st.error("Error: Face detection file missing or corrupted in GitHub repo!")
+        else:
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             if len(faces) > 0:
                 face_count = len(faces)
@@ -69,8 +55,8 @@ with col2:
                     for (x, y, w, h) in faces:
                         cv2.rectangle(cv2_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
                         
-                        # കണ്ണുകൾ കണ്ടെത്തുന്നു
-                        if not eye_cascade.empty():
+                        # കണ്ണ് കണ്ടെത്തൽ
+                        if not eye_cascade.empty() and eye_cascade is not None:
                             roi_gray = gray[y:y+h, x:x+w]
                             roi_color = cv2_img[y:y+h, x:x+w]
                             eyes = eye_cascade.detectMultiScale(roi_gray, 1.1, 10)
@@ -80,7 +66,5 @@ with col2:
                                 cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (255, 0, 0), 2)
             else:
                 st.error("🚨 WARNING: No Face Detected! Stay in front of the camera.")
-        else:
-            st.warning("AI Engine is booting up. Please snap the photo again in 5 seconds!")
 
         st.image(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB), caption="AI Real-time Analysis", use_container_width=True)
