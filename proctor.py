@@ -6,14 +6,25 @@ import os
 # പേജിന്റെ ലേഔട്ട് സെറ്റ് ചെയ്യുന്നു
 st.set_page_config(page_title="AI Exam Proctor", layout="wide")
 
-# കറന്റ് ഫോൾഡറിലെ XML ഫയലുകളുടെ കൃത്യമായ പാത്ത് കണ്ടുപിടിക്കുന്നു
-current_dir = os.path.dirname(os.path.abspath(__file__))
-face_path = os.path.join(current_dir, 'haarcascade_frontalface_default.xml')
-eye_path = os.path.join(current_dir, 'haarcascade_eye.xml')
+# ഫയലുകൾ സുരക്ഷിതമായി ബൈറ്റ്സ് ആയി ലോഡ് ചെയ്യാനുള്ള ഫങ്ക്ഷൻ
+@st.cache_resource
+def load_cascade_safely(file_name):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    full_path = os.path.join(current_dir, file_name)
+    
+    # ഫയൽ ഉണ്ടോ എന്ന് ചെക്ക് ചെയ്യുന്നു
+    if not os.path.exists(full_path):
+        return None
+        
+    # എറർ പൂർണ്ണമായി മാറ്റാൻ OpenCV-യുടെ തനതായ രീതിയിൽ ഫയൽ ലോഡ് ചെയ്യുന്നു
+    cascade = cv2.CascadeClassifier()
+    if cascade.load(full_path):
+        return cascade
+    return None
 
-# ഗിറ്റ്‌ഹബ്ബിൽ അപ്‌ലോഡ് ചെയ്ത ഫയലുകൾ നേരിട്ട് ലോഡ് ചെയ്യുന്നു
-face_cascade = cv2.CascadeClassifier(face_path)
-eye_cascade = cv2.CascadeClassifier(eye_path)
+# രണ്ട് മോഡലുകളും ലോഡ് ചെയ്യുന്നു
+face_cascade = load_cascade_safely('haarcascade_frontalface_default.xml')
+eye_cascade = load_cascade_safely('haarcascade_eye.xml')
 
 st.title("🎓 Smart AI Virtual Exam Proctoring System")
 st.write("---")
@@ -39,9 +50,9 @@ with col2:
         cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
         
-        # ഫയലുകൾ ശരിയായി ലോഡ് ആയിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുന്നു
-        if face_cascade.empty() or face_cascade is None:
-            st.error("Error: Face detection file missing or corrupted in GitHub repo!")
+        # ഫയലുകൾ ലോഡ് ആയിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുന്നു
+        if face_cascade is None:
+            st.error("Error: Face detection XML file missing or corrupted in your GitHub folder!")
         else:
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             if len(faces) > 0:
@@ -56,7 +67,7 @@ with col2:
                         cv2.rectangle(cv2_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
                         
                         # കണ്ണ് കണ്ടെത്തൽ
-                        if not eye_cascade.empty() and eye_cascade is not None:
+                        if eye_cascade is not None:
                             roi_gray = gray[y:y+h, x:x+w]
                             roi_color = cv2_img[y:y+h, x:x+w]
                             eyes = eye_cascade.detectMultiScale(roi_gray, 1.1, 10)
