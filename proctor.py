@@ -1,21 +1,14 @@
 import cv2
 import numpy as np
-import os
 import streamlit as st
 
 # പേജിന്റെ ലേഔട്ട് സെറ്റ് ചെയ്യുന്നു
 st.set_page_config(page_title="AI Exam Proctor", layout="wide")
 
-# ഫയലുകൾ ലോഡ് ചെയ്യുന്നു
-face_xml = 'haarcascade_frontalface_default.xml'
-eye_xml = 'haarcascade_eye.xml'
-
-if not os.path.exists(face_xml) or not os.path.exists(eye_xml):
-    st.error("Error: XML ഫയലുകൾ ഫോൾഡറിൽ കാണാനില്ല! ദയവായി GitHub-ൽ ഈ ഫയലുകൾ ഉണ്ടെന്ന് ഉറപ്പാക്കുക.")
-    st.stop()
-
-face_cascade = cv2.CascadeClassifier(face_xml)
-eye_cascade = cv2.CascadeClassifier(eye_xml)
+# OpenCV-യുടെ സ്വന്തം ഡാറ്റാ പാത്തിൽ നിന്നും ഫയലുകൾ നേരിട്ട് ലോഡ് ചെയ്യുന്നു
+# ഇത് ചെയ്യുന്നതിലൂടെ XML ഫയലുകൾ കാണാനില്ലെന്ന എറർ പൂർണ്ണമായും മാറും!
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 
 st.title("🎓 Smart AI Virtual Exam Proctoring System")
 st.write("---")
@@ -35,9 +28,9 @@ with col1:
 
 with col2:
     st.subheader("📹 Live AI Security Check")
-    st.write("ക്ലൗഡിൽ ലൈവ് ആയി റൺ ചെയ്യുമ്പോൾ ക്യാമറ ഫീഡ് എടുക്കാൻ താഴെ കാണുന്ന ബട്ടൺ ഉപയോഗിക്കുക:")
+    st.write("Click below to snap a photo and let AI check your presence:")
     
-    # Streamlit Cloud-ൽ യൂസറുടെ വെബ്ക്യാം റിയൽ-ടൈം ആയി എടുക്കാനുള്ള വിഡ്ജറ്റ്
+    # Streamlit Cloud-ൽ ക്യാമറ ഇൻപുട്ട് ടൂൾ
     img_file_buffer = st.camera_input("Verify your identity & screen presence")
 
     if img_file_buffer is not None:
@@ -66,7 +59,6 @@ with col2:
                     # മുഖത്തിന് ചുറ്റും പച്ച ബോക്സ്
                     cv2.rectangle(cv2_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
                     
-                    # കണ്ണുകൾ കണ്ടുപിടിക്കാൻ മുഖത്തിന്റെ ഭാഗം മാത്രം വേർതിരിക്കുന്നു (ROI)
                     roi_gray = gray[y:y+h, x:x+w]
                     roi_color = cv2_img[y:y+h, x:x+w]
                     
@@ -83,5 +75,5 @@ with col2:
         else:
             st.error("🚨 WARNING: No Face Detected! Stay in front of the camera.")
 
-        # ഫൈനൽ ഔട്ട്പുട്ട് ഇമേജ് സുന്ദരമായി വെബ്‌സൈറ്റിൽ കാണിക്കുന്നു
+        # ഫൈനൽ ഔട്ട്പുട്ട് ഇമേജ് വെബ്‌സൈറ്റിൽ കാണിക്കുന്നു
         st.image(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB), caption="AI Real-time Analysis", use_container_width=True)
