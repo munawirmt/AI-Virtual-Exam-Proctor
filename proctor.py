@@ -1,14 +1,25 @@
 import cv2
 import numpy as np
+import urllib.request
 import streamlit as st
 
 # പേജിന്റെ ലേഔട്ട് സെറ്റ് ചെയ്യുന്നു
 st.set_page_config(page_title="AI Exam Proctor", layout="wide")
 
-# OpenCV-യുടെ സ്വന്തം ഡാറ്റാ പാത്തിൽ നിന്നും ഫയലുകൾ നേരിട്ട് ലോഡ് ചെയ്യുന്നു
-# ഇത് ചെയ്യുന്നതിലൂടെ XML ഫയലുകൾ കാണാനില്ലെന്ന എറർ പൂർണ്ണമായും മാറും!
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+# ഒഫീഷ്യൽ ഗിറ്റ്‌ഹബ്ബ് ലിങ്കിൽ നിന്നും നേരിട്ട് XML ഫയലുകൾ ലോഡ് ചെയ്യാനുള്ള ഫങ്ക്ഷൻ
+@st.cache_resource
+def load_cascades():
+    face_url = "https://githubusercontent.com"
+    eye_url = "https://githubusercontent.com"
+    
+    # സെർവറിലേക്ക് താല്കാലികമായി ഫയൽ ഡൗൺലോഡ് ചെയ്യുന്നു
+    urllib.request.urlretrieve(face_url, "face.xml")
+    urllib.request.urlretrieve(eye_url, "eye.xml")
+    
+    return cv2.CascadeClassifier("face.xml"), cv2.CascadeClassifier("eye.xml")
+
+# മോഡലുകൾ ലോഡ് ചെയ്യുന്നു
+face_cascade, eye_cascade = load_cascades()
 
 st.title("🎓 Smart AI Virtual Exam Proctoring System")
 st.write("---")
